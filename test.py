@@ -4,20 +4,20 @@ import numpy as np
 import math
 import sys
 import random
-
-import torchvision.transforms as transforms
-from torchvision.utils import save_image
+import time
 
 from dataset.floorplan_dataset_maps_functional_high_res import FloorplanGraphDataset, floorplan_collate_fn
 
-from torch.utils.data import DataLoader
-from torchvision import datasets
-from torch.autograd import Variable
-
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
-import torch
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
+from torchvision import datasets
+from torch.autograd import Variable
+from torchvision.utils import save_image
+
 from PIL import Image, ImageDraw, ImageFont
 import svgwrite
 from models.models import Generator
@@ -25,12 +25,13 @@ from models.models import Generator
 
 from misc.utils import _init_input, ID_COLOR, draw_masks, draw_graph, estimate_graph
 from collections import defaultdict
+
 import matplotlib.pyplot as plt
+import cv2
+
 import networkx as nx
 import glob
-import cv2
 import webcolors
-import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_cpu", type=int, default=16, help="number of cpu threads to use during batch generation")
@@ -45,13 +46,14 @@ print(opt)
 os.makedirs(opt.out, exist_ok=True)
 
 # Initialize generator and discriminator
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = 'cpu'
 model = Generator()
-model.load_state_dict(torch.load(opt.checkpoint), strict=True)
+model.load_state_dict(torch.load(opt.checkpoint, map_location='cpu'), strict=True)
 model = model.eval()
 
 # Initialize variables
-if torch.cuda.is_available():
-    model.cuda()
+model.to(device)
 
 # initialize dataset iterator
 fp_dataset_test = FloorplanGraphDataset(opt.data_path, transforms.Normalize(mean=[0.5], std=[0.5]), split='test')
@@ -59,7 +61,7 @@ fp_loader = torch.utils.data.DataLoader(fp_dataset_test,
                                         batch_size=opt.batch_size, 
                                         shuffle=False, collate_fn=floorplan_collate_fn)
 # optimizers
-Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
+Tensor = torch.FloatTensor.to(device)
 
 # run inference
 def _infer(graph, model, prev_state=None):
@@ -68,7 +70,7 @@ def _infer(graph, model, prev_state=None):
     z, given_masks_in, given_nds, given_eds = _init_input(graph, prev_state)
     # run inference model
     with torch.no_grad():
-        masks = model(z.to('cuda'), given_masks_in.to('cuda'), given_nds.to('cuda'), given_eds.to('cuda'))
+        masks = model(z.to(device), given_masks_in.to(device), given_nds.to(device), given_eds.to(device))
         masks = masks.detach().cpu().numpy()
     return masks
 
