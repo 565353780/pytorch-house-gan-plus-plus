@@ -82,9 +82,6 @@ class HouseGanPlusPlusDetector:
             shuffle=False,
             collate_fn=floorplan_collate_fn)
 
-        # optimizers
-        #  Tensor = torch.FloatTensor.to(self.device)
-
         globalIndex = 0
         for i, sample in enumerate(fp_loader):
 
