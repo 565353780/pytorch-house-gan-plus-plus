@@ -67,7 +67,7 @@ class HouseGanPlusPlusDetector:
     def test(self):
         dataset_path = "./data/sample_list.txt"
         batch_size = 1
-        out = "./dump"
+        out = "./dump/"
         # Create output dir
         os.makedirs(out, exist_ok=True)
 
@@ -84,18 +84,19 @@ class HouseGanPlusPlusDetector:
 
         globalIndex = 0
         for i, sample in enumerate(fp_loader):
+            print("running at : i = " + str(i))
 
             # draw real graph and groundtruth
             mks, nds, eds, _, _ = sample
             real_nodes = np.where(nds.detach().cpu()==1)[-1]
             graph = [nds, eds]
             true_graph_obj, graph_im = draw_graph([real_nodes, eds.detach().cpu().numpy()])
-            graph_im.save('./{}/graph_{}.png'.format(out, i)) # save graph
+            graph_im.save(out + 'graph_' + str(i) + '.png') # save graph
 
             # add room types incrementally
             _types = sorted(list(set(real_nodes)))
             selected_types = [_types[:k+1] for k in range(10)]
-            os.makedirs('./{}/'.format(out), exist_ok=True)
+            os.makedirs(out, exist_ok=True)
             _round = 0
             
             # initialize layout
@@ -103,7 +104,7 @@ class HouseGanPlusPlusDetector:
             masks = self.detect(graph, state)
             im0 = draw_masks(masks.copy(), real_nodes)
             im0 = torch.tensor(np.array(im0).transpose((2, 0, 1)))/255.0 
-            # save_image(im0, './{}/fp_init_{}.png'.format(out, i), nrow=1, normalize=False) # visualize init image
+            save_image(im0, out + 'fp_init_' + str(i) + '.png', nrow=1, normalize=False) # visualize init image
 
             # generate per room type
             for _iter, _types in enumerate(selected_types):
@@ -115,8 +116,9 @@ class HouseGanPlusPlusDetector:
             # save final floorplans
             imk = draw_masks(masks.copy(), real_nodes)
             imk = torch.tensor(np.array(imk).transpose((2, 0, 1)))/255.0 
-            save_image(imk, './{}/fp_final_{}.png'.format(out, i), nrow=1, normalize=False)
-     
+            save_image(imk, out + 'fp_final_' + str(i) + '.png', nrow=1, normalize=False) # visualize init image
+
+            print("finish running at : i = " + str(i))
         return
 
 if __name__ == '__main__':
